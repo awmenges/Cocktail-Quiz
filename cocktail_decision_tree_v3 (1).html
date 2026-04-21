@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cocktail Decision Tree</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f9f8f6; margin: 0; padding: 1rem; }
+  .wrap { padding: 1.5rem 0; max-width: 660px; margin: 0 auto; }
+  .q-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+  .q-label { font-size: 11px; font-weight: 500; color: #888; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 0.4rem; }
+  .q-text { font-size: 17px; font-weight: 500; color: #111; margin-bottom: 1.1rem; line-height: 1.4; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+  .opt { background: #f4f3f0; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; padding: 0.65rem 0.9rem; font-size: 13px; color: #111; cursor: pointer; text-align: left; line-height: 1.4; }
+  .opt:hover { background: #eceae5; border-color: rgba(0,0,0,0.35); }
+  .opt.sel { border: 1.5px solid #7F77DD; background: #EEEDFE; color: #3C3489; }
+  .opt.sel::before { content: "✓ "; font-size: 11px; }
+  .next-btn { background: transparent; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; padding: 0.6rem 1.4rem; font-size: 13px; color: #111; cursor: pointer; }
+  .next-btn:hover { background: #f4f3f0; }
+  .back-btn { background: transparent; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 8px; padding: 0.6rem 1.1rem; font-size: 13px; color: #666; cursor: pointer; }
+  .back-btn:hover { background: #f4f3f0; color: #111; }
+  .btn-row { display: flex; align-items: center; margin-top: 1rem; gap: 8px; }
+  .prog-wrap { height: 4px; background: #e8e6e0; border-radius: 2px; margin-bottom: 1.4rem; }
+  .prog-fill { height: 4px; background: #7F77DD; border-radius: 2px; transition: width 0.3s ease; }
+  .result-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 2rem; text-align: center; }
+  .drink-lbl { font-size: 12px; color: #888; margin-bottom: 0.3rem; }
+  .drink-name { font-size: 30px; font-weight: 500; color: #111; margin: 0 0 0.75rem; }
+  .drink-desc { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 1.25rem; max-width: 420px; margin-left: auto; margin-right: auto; }
+  .drink-tags { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .tag { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: #f4f3f0; color: #666; border: 0.5px solid rgba(0,0,0,0.12); }
+  .count-note { font-size: 13px; color: #888; margin-bottom: 1.2rem; }
+  .restart-btn { background: transparent; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; padding: 0.55rem 1.4rem; font-size: 13px; color: #111; cursor: pointer; margin: 0 5px; }
+  .restart-btn:hover { background: #f4f3f0; }
+  .no-result { text-align: center; padding: 1.5rem; color: #666; font-size: 15px; }
+  .no-result strong { display: block; font-size: 18px; color: #111; margin-bottom: 0.5rem; }
+  .multi-hint { font-size: 11px; color: #aaa; margin-bottom: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="wrap"><div id="root"></div></div>
+<script>
+const DESCRIPTIONS = {
+  "Old Fashioned": "Whiskey, a sugar cube, a few dashes of bitters, one big ice cube. The original cocktail, and honestly still the best argument that less is more. Serious without being stuffy.",
+  "Sazerac": "New Orleans in a glass. Rye whiskey and absinthe have a complicated relationship, and this drink is their masterpiece. Herbal, brooding, and completely unforgettable.",
+  "Vieux Carre": "Named after the French Quarter, this is what happens when rye, cognac, and sweet vermouth decide to share a glass. Rich, layered, and sophisticated — the kind of drink that makes you slow down.",
+  "Negroni": "Equal parts gin, Campari, and sweet vermouth. Simple on paper, endlessly complex in the glass. Bitter, beautiful, and bold enough to let you know exactly who's in charge.",
+  "White Negroni": "The Negroni's elegant, sun-drenched cousin. Gin and Lillet Blanc make it floral and lighter, with just enough bitterness to keep things interesting. Perfect for when you want refinement without severity.",
+  "Bitter Guissepe": "Cynar and sweet vermouth, stirred cold and served with zero apology. Deep, herbal, and gloriously bitter — this is the drink of someone who knows exactly what they like.",
+  "Adonis": "A low-ABV gem that proves you don't need a base spirit to make something extraordinary. Sherry and sweet vermouth, nutty and silky, with enough complexity to keep you thinking about it all night.",
+  "Black Manhattan": "The Manhattan's mysterious alter ego. Swap the vermouth for Averna amaro and suddenly you're dealing with something darker, richer, and a little more dangerous. In the best way.",
+  "Martinez": "The great-grandfather of the martini, and frankly more interesting than its descendant. Gin, sweet vermouth, and maraschino — a stirred classic that rewards anyone patient enough to seek it out.",
+  "Last Word": "Prohibition-era equal-parts magic: gin, green Chartreuse, maraschino, and lime. Somehow perfectly balanced despite having no right to be. Herbal, bright, and quietly show-stopping.",
+  "Corpse Reviver #2": "A pre-lunch restorative from the 1930s that absolutely lives up to its name. Gin, Cointreau, Lillet Blanc, lemon, and a rinse of absinthe — bracingly good and dangerously easy to drink.",
+  "Daquiri": "Three ingredients. Zero compromise. Rum, lime, and sugar done right is one of the most satisfying things a cocktail can be. Don't let anyone tell you otherwise.",
+  "Margarita": "Tequila, lime, triple sec — the cocktail that has somehow never had a bad era. Salted rim optional, good mood mandatory. The universal language of a good time.",
+  "Gin Fizz": "Gin and lemon shaken hard, lengthened with soda, and served tall. Light, frothy, and effortlessly refreshing — the afternoon drink that makes everything feel manageable.",
+  "Naked and Famous": "The Paper Plane's wilder sibling. Mezcal steps in for bourbon and suddenly equal parts feels like a revelation. Smoky, citrusy, and just a little untamed.",
+  "Paper Plane": "Amaro Nonino, Aperol, bourbon, lemon — equal parts of everything, somehow adding up to more than the sum. Modern, balanced, and the kind of cocktail that makes new friends.",
+  "Mexican Firing Squad": "Tequila, lime, grenadine, and a healthy pour of bitters. It's festive, it's punchy, and it has a name that absolutely lives up to the experience. Handle with enthusiasm.",
+  "My Boy Blue": "Blue curaçao gives this one its striking colour, but there's real substance behind the looks. Citrusy, lightly sweet, and genuinely fun — a cocktail that refuses to take itself too seriously.",
+  "Bourbon Renewal": "Bourbon, lemon, crème de cassis, and bitters. A whiskey sour grown up and given a deep berry richness. Autumnal, warming, and deeply satisfying.",
+  "Classic Cocktail": "A proper sour done the right way — spirit, citrus, sweetener, perfectly balanced. This is the template everything else is measured against, and it's a template for a reason.",
+  "Bennet": "Gin, lime juice, and a dash of bitters. Simple, tart, and quietly brilliant. The kind of drink that bartenders order when they're finally off the clock.",
+  "Seelbach": "Bourbon meets sparkling wine, with Cointreau and bitters tying it all together. Festive and complex, this is the cocktail for when you want something celebratory but not frivolous.",
+  "Champagne Cocktail": "A sugar cube soaked in bitters, dropped into a glass of cold champagne. Watching it dissolve is half the experience. Elegant, timeless, and impossible to resist.",
+  "New York Sour": "A whiskey sour with a red wine float that looks like a sunset and tastes like one too. Bright citrus underneath, dark fruit on top — a study in beautiful contrasts.",
+  "Spritz": "Aperol, prosecco, a splash of soda, a big orange slice. The aperitivo hour drink that turned into a movement. Effervescent, low-key, and entirely unapologetic about being easy to love.",
+  "Collins": "A spirit, lemon, sugar, and soda water, served long and cold. The Collins is the great leveller — no matter what you put in it, it comes out refreshing and exactly right.",
+  "Ricky": "A spirit, fresh lime, and soda — drier than a Collins and twice as thirst-quenching. The Ricky doesn't try to impress you. It just quietly delivers.",
+  "Sherry Cobbler": "Sherry, citrus, and a little sugar, piled high with crushed ice and fruit. The 19th century's favourite drink, and once you try it you'll understand why. Nutty, fruity, and endlessly refreshing.",
+  "Marrakesh Express": "Pomegranate, citrus, and warm spice — this one takes you somewhere. Exotic without being gimmicky, and complex enough to keep you guessing all the way to the bottom of the glass.",
+  "Green Swizzle": "Crème de menthe and rum, swizzled over crushed ice until frost forms on the glass. Cool, herbal, and visually stunning — the drink that looks as good as it tastes.",
+  "Chartruese Swizzle": "Green Chartreuse, pineapple, Velvet Falernum, and lime, swizzled over crushed ice. It is, without exaggeration, one of the greatest cocktails ever created. You'll want another immediately.",
+  "Mai Tai": "The original tiki masterpiece. Rum, lime, orgeat, and orange curaçao — built for sunshine, salt air, and absolutely nowhere to be. If this doesn't put you on a beach, nothing will.",
+  "One Love": "A tropical love letter in a glass. Rum, pineapple, and coconut come together in a drink that's warm, generous, and impossible not to smile at. Cheers to good vibes.",
+  "Lorikeet": "Inspired by the colourful bird, this tiki-leaning creation brings cinnamon, citrus, and rum together in something vibrant and surprising. Warm spice and tropical brightness in perfect tension.",
+  "Caparihna": "Brazil's national cocktail: cachaça, sugar, and fresh lime muddled together over crushed ice. Raw, punchy, and completely addictive. Simple in the most electrifying way.",
+  "Navy Grog": "A robust rum drink built on grapefruit, honey, and lime — the kind of thing sailors drank to stay sane on long voyages. One sip and you'll understand why they kept the recipe.",
+  "Parasol": "Light, fruit-forward, and built for warm afternoons. The kind of cocktail that looks delicate but has a quiet confidence underneath. Exactly what a spring drink should be.",
+  "Morning Glory Fizz": "Scotch, absinthe, lemon, and egg white, topped with soda. A restorative fizz from another century that still manages to feel like a revelation. Silky, anise-kissed, and quietly invigorating.",
+  "Liqueur": "Sometimes the best decision is the simplest one. Pour something beautiful, find a good glass, and savour it as it was meant to be enjoyed — on its own, with nothing to hide behind.",
+  "Amaro": "Bitter, herbal, complex, and deeply satisfying. Amaro after dinner isn't just a drink — it's a ritual. Sip slowly and let it do its ancient, digestive, slightly mysterious work.",
+  "Singapore Sling": "Gin, cherry liqueur, Cointreau, Bénédictine, pineapple, lime, grenadine, and bitters. It shouldn't work. It absolutely works. A tiki-adjacent classic that earns every one of its ingredients.",
+  "Americano": "Campari, sweet vermouth, and soda water — the aperitivo that started it all. James Bond ordered one before he discovered martinis. Low ABV, high reward, zero regrets.",
+  "Chrysanthemum": "Dry vermouth, Bénédictine, and absinthe — a pre-Prohibition classic that tastes like a garden at dusk. Floral, herbal, and gently intoxicating. The most elegant low-ABV drink you'll ever have."
+};
+
+const DRINKS = [{"name":"Old Fashioned","type":"Spirit Forward","season":"Winter","afternoon":false,"afterDinner":true,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Sazerac","type":"Spirit Forward","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Vieux Carre","type":"Spirit Forward","season":"Winter","afternoon":false,"afterDinner":true,"lowAbv":false,"fresh":[],"booze":["Sweet Vermouth"]},{"name":"Negroni","type":"Spirit Forward","season":"Summer","afternoon":false,"afterDinner":true,"lowAbv":false,"fresh":[],"booze":["Sweet Vermouth"]},{"name":"White Negroni","type":"Spirit Forward","season":"Summer","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Lillet Blanc"]},{"name":"Bitter Guissepe","type":"Spirit Forward","season":"Winter","afternoon":false,"afterDinner":true,"lowAbv":true,"fresh":[],"booze":[]},{"name":"Adonis","type":"Spirit Forward","season":"Spring","afternoon":false,"afterDinner":true,"lowAbv":false,"fresh":[],"booze":["Sweet Vermouth","Sherry"]},{"name":"Black Manhattan","type":"Spirit Forward","season":"Summer","afternoon":false,"afterDinner":true,"lowAbv":false,"fresh":[],"booze":["Sweet Vermouth"]},{"name":"Martinez","type":"Spirit Forward","season":"Spring","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Sweet Vermouth"]},{"name":"Last Word","type":"Sour","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Corpse Reviver #2","type":"Sour","season":"Summer","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Lillet Blanc"]},{"name":"Daquiri","type":"Sour","season":"Summer","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Margarita","type":"Sour","season":"Summer","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Gin Fizz","type":"Sour","season":"Spring","afternoon":true,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Naked and Famous","type":"Sour","season":null,"afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Paper Plane","type":"Sour","season":null,"afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Mexican Firing Squad","type":"Sour","season":"Summer","afternoon":true,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"My Boy Blue","type":"Sour","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Bourbon Renewal","type":"Sour","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Classic Cocktail","type":"Sour","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Bennet","type":"Sour","season":"Spring","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Seelbach","type":"Sparkling","season":"Spring","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Sparkling Wine"]},{"name":"Champagne Cocktail","type":"Sparkling","season":"Winter","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Sparkling Wine"]},{"name":"New York Sour","type":"Sour","season":"Summer","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Red Wine"]},{"name":"Spritz","type":"Long","season":"Summer","afternoon":true,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Sparkling Wine"]},{"name":"Collins","type":"Long","season":"Summer","afternoon":true,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Ricky","type":"Long","season":"Summer","afternoon":true,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Sherry Cobbler","type":"Long","season":"Summer","afternoon":true,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Sherry"]},{"name":"Marrakesh Express","type":"Sour","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":["Pomegranate Juice"],"booze":[]},{"name":"Green Swizzle","type":"Sour","season":"Spring","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Chartruese Swizzle","type":"Tiki and Family","season":"Winter","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":["Pineapple"],"booze":[]},{"name":"Mai Tai","type":"Tiki and Family","season":null,"afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":["Mint"],"booze":[]},{"name":"One Love","type":"Tiki and Family","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":["Pineapple"],"booze":["Coconut Vodka"]},{"name":"Lorikeet","type":"Tiki and Family","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":["Cinnamon Syrup"],"booze":[]},{"name":"Caparihna","type":"Tiki and Family","season":"Summer","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Navy Grog","type":"Tiki and Family","season":"Spring","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":["Grapefruit"],"booze":[]},{"name":"Parasol","type":"Tiki and Family","season":"Spring","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Morning Glory Fizz","type":"Long","season":"Winter","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Liqueur","type":"One-Ingredient","season":null,"afternoon":false,"afterDinner":true,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Amaro","type":"One-Ingredient","season":null,"afternoon":false,"afterDinner":true,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Singapore Sling","type":"Tiki and Family","season":"Fall","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":[]},{"name":"Americano","type":"Long","season":"Summer","afternoon":false,"afterDinner":false,"lowAbv":false,"fresh":[],"booze":["Sweet Vermouth"]},{"name":"Chrysanthemum","type":"Spirit Forward","season":null,"afternoon":false,"afterDinner":true,"lowAbv":true,"fresh":[],"booze":["Dry Vermouth"]}];
+
+const ALL_FRESH   = ["Mint","Grapefruit","Pineapple","Cinnamon Syrup","Pomegranate Juice","Orange"];
+const ALL_BOOZE   = ["Sweet Vermouth","Dry Vermouth","Blanc Vermouth","Lillet Blanc","Sherry","Riesling","Sparkling Wine","Coconut Vodka","Red Wine"];
+const ALL_TYPES   = ["Spirit Forward","Sour","Tiki and Family","Long","Sparkling","One-Ingredient"];
+const ALL_SEASONS = ["Fall","Winter","Spring","Summer"];
+
+const STEP_DEFS = [
+  { id: "afterDinner", label: "Are you looking for an after-dinner drink?",                   type: "yesno" },
+  { id: "afternoon",   label: "Are you looking for a drink to pair with afternoon sunshine?", type: "yesno" },
+  { id: "lowAbv",      label: "Keeping it low ABV tonight?",                                  type: "yesno" },
+  { id: "fresh",       label: "Which fresh ingredients do you have on hand?",                 type: "multi", hint: "Select all that apply — then hit Continue" },
+  { id: "booze",       label: "Which bottles do you have open right now?",                    type: "multi", hint: "Select all that apply — then hit Continue" },
+  { id: "type",        label: "What are you in the mood for?",                                type: "single" },
+  { id: "season",      label: "What season is it?",                                           type: "single" },
+];
+
+let answers = {};
+let pending = { fresh: [], booze: [] };
+let history = [];
+let lastResult = null;
+
+function filterPool(ans) {
+  let pool = [...DRINKS];
+  if (ans.afterDinner === true) pool = pool.filter(d => d.afterDinner);
+  if (ans.afternoon   === true) pool = pool.filter(d => d.afternoon);
+  if (ans.lowAbv      === true) pool = pool.filter(d => d.lowAbv);
+  if (ans.type)   pool = pool.filter(d => d.type === ans.type);
+  if (ans.season) pool = pool.filter(d => !d.season || d.season === ans.season);
+  if ('fresh' in ans) { const h = ans.fresh||[]; pool = pool.filter(d => d.fresh.every(f => h.includes(f))); }
+  if ('booze' in ans) { const h = ans.booze||[]; pool = pool.filter(d => d.booze.every(b => h.includes(b))); }
+  return pool;
+}
+
+function filterPoolIgnoring(ans, ignoreIds) {
+  const s = {...ans}; ignoreIds.forEach(id => delete s[id]); return filterPool(s);
+}
+
+function relevantSeasons(ans) {
+  return ALL_SEASONS.filter(s => filterPool({...ans, season: s}).length > 0);
+}
+
+function stepIsUseful(stepId, ans) {
+  const isOneIng = ans.type === "One-Ingredient";
+  if (isOneIng && ["afternoon","fresh","booze"].includes(stepId)) return false;
+  if (stepId === "fresh") {
+    const pool = filterPoolIgnoring(ans, ['fresh','booze']);
+    const n = new Set(); pool.forEach(d => d.fresh.forEach(f => n.add(f))); return n.size > 0;
+  }
+  if (stepId === "booze") {
+    const pool = filterPoolIgnoring(ans, ['booze']);
+    const n = new Set(); pool.forEach(d => d.booze.forEach(b => n.add(b)));
+    return n.size > 0 && pool.some(d => d.booze.length === 0);
+  }
+  const pool = filterPool(ans);
+  if (stepId === "afterDinner") return pool.some(d => !d.afterDinner) && pool.some(d => d.afterDinner);
+  if (stepId === "afternoon")   return pool.some(d => !d.afternoon)   && pool.some(d => d.afternoon);
+  if (stepId === "lowAbv")      return pool.some(d => !d.lowAbv)      && pool.some(d => d.lowAbv);
+  if (stepId === "type")        return new Set(pool.map(d => d.type)).size > 1;
+  if (stepId === "season")      return relevantSeasons(ans).length > 1;
+  return false;
+}
+
+function buildQueue(ans) {
+  return STEP_DEFS.filter(s => !(s.id in ans) && stepIsUseful(s.id, ans));
+}
+
+function relevantOptions(id, ans) {
+  if (id === 'fresh') {
+    const pool = filterPoolIgnoring(ans, ['fresh','booze']);
+    const n = new Set(); pool.forEach(d => d.fresh.forEach(f => n.add(f))); return ALL_FRESH.filter(f => n.has(f));
+  }
+  if (id === 'booze') {
+    const pool = filterPoolIgnoring(ans, ['booze']);
+    const n = new Set(); pool.forEach(d => d.booze.forEach(b => n.add(b))); return ALL_BOOZE.filter(b => n.has(b));
+  }
+  const pool = filterPool(ans);
+  if (id === 'type')   { const t = new Set(pool.map(d => d.type)); return ALL_TYPES.filter(x => t.has(x)); }
+  if (id === 'season') return relevantSeasons(ans);
+  return [];
+}
+
+function pickWinner(pool, ans, excludeName) {
+  if (pool.length === 0) return null;
+  const candidates = pool.length > 1 && excludeName ? pool.filter(d => d.name !== excludeName) : pool;
+  const boozeSet = new Set(ans.booze || []);
+  let p = candidates.filter(d => d.booze.length > 0 && d.booze.some(b => boozeSet.has(b)));
+  if (p.length > 0) return p[Math.floor(Math.random() * p.length)];
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function commitAnswer(id, val) {
+  history.push({ answers: JSON.parse(JSON.stringify(answers)), pending: JSON.parse(JSON.stringify(pending)) });
+  answers[id] = val;
+  render();
+}
+
+function commitMulti(id) {
+  history.push({ answers: JSON.parse(JSON.stringify(answers)), pending: JSON.parse(JSON.stringify(pending)) });
+  answers[id] = [...(pending[id] || [])];
+  render();
+}
+
+function toggleItem(id, val) {
+  const arr = pending[id] || [];
+  const idx = arr.indexOf(val);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(val);
+  pending[id] = arr;
+  const btn = document.querySelector(`button[data-id="${id}"][data-val="${CSS.escape(val)}"]`);
+  if (btn) {
+    if (pending[id].includes(val)) btn.classList.add('sel');
+    else btn.classList.remove('sel');
+  }
+}
+
+function goBack() {
+  if (history.length === 0) return;
+  const prev = history.pop();
+  answers = prev.answers;
+  pending = prev.pending;
+  lastResult = null;
+  render();
+}
+
+function render() {
+  const root = document.getElementById('root');
+  const pool = filterPool(answers);
+
+  if (Object.keys(answers).length > 0 && pool.length <= 1) {
+    const winner = pickWinner(pool, answers, null);
+    lastResult = winner ? winner.name : null;
+    root.innerHTML = renderResult(winner, pool.length);
+    return;
+  }
+
+  const queue = buildQueue(answers);
+  if (queue.length === 0) {
+    const winner = pickWinner(pool, answers, null);
+    lastResult = winner ? winner.name : null;
+    root.innerHTML = renderResult(winner, pool.length);
+    return;
+  }
+
+  const s = queue[0];
+  const answeredCount = Object.keys(answers).length;
+  const pct = (answeredCount / STEP_DEFS.length) * 100;
+  const canGoBack = history.length > 0;
+  const backHtml = canGoBack ? `<button class="back-btn" onclick="goBack()">← Back</button>` : '';
+  if (!pending[s.id]) pending[s.id] = [];
+
+  let optHtml = '';
+  if (s.type === 'yesno') {
+    const cur = answers[s.id];
+    optHtml = `<div class="grid2">
+      <button class="opt${cur===true?' sel':''}" onclick="commitAnswer('${s.id}',true)">Yes</button>
+      <button class="opt${cur===false?' sel':''}" onclick="commitAnswer('${s.id}',false)">No</button>
+    </div><div class="btn-row">${backHtml}</div>`;
+  } else if (s.type === 'single') {
+    const opts = relevantOptions(s.id, answers);
+    const cols = opts.length <= 4 ? 'grid2' : 'grid3';
+    const cur = answers[s.id];
+    optHtml = `<div class="${cols}">${opts.map(o => `<button class="opt${cur===o?' sel':''}" onclick="commitAnswer('${s.id}','${o}')">${o}</button>`).join('')}</div><div class="btn-row">${backHtml}</div>`;
+  } else if (s.type === 'multi') {
+    const opts = relevantOptions(s.id, answers);
+    const btnHtml = opts.map(o => {
+      const isSel = (pending[s.id] || []).includes(o);
+      return `<button class="opt${isSel?' sel':''}" data-id="${s.id}" data-val="${o}" onclick="toggleItem('${s.id}','${o}')">${o}</button>`;
+    }).join('');
+    optHtml = `<div class="multi-hint">${s.hint}</div><div class="grid3">${btnHtml}</div><div class="btn-row">${backHtml}<button class="next-btn" onclick="commitMulti('${s.id}')">Continue →</button></div>`;
+  }
+
+  root.innerHTML = `
+    <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div class="q-card">
+      <div class="q-label">Question ${answeredCount + 1}</div>
+      <div class="q-text">${s.label}</div>
+      ${optHtml}
+    </div>`;
+}
+
+function renderResult(drink, poolSize) {
+  if (!drink) {
+    return `<div class="q-card no-result"><strong>Nothing matched those filters.</strong> Try loosening a few constraints!<br><br><button class="restart-btn" onclick="goBack()">← Go back</button><button class="restart-btn" onclick="restart()">Start over</button></div>`;
+  }
+  const desc = DESCRIPTIONS[drink.name] || "";
+  const tags = [drink.type, drink.season||'Any season', drink.lowAbv?'Low ABV':null, drink.afterDinner?'After dinner':null].filter(Boolean);
+  const pool = filterPool(answers);
+  const rerollable = pool.length > 1;
+  const note = poolSize > 1
+    ? `<div class="count-note">${poolSize} drinks matched your filters — fate chose this one.</div>`
+    : `<div class="count-note">Only one drink matched your filters. The bar has spoken.</div>`;
+  return `
+    <div class="prog-wrap"><div class="prog-fill" style="width:100%"></div></div>
+    <div class="result-card">
+      <div style="font-size:42px;margin-bottom:0.5rem">🍸</div>
+      <div class="drink-lbl">Tonight you're having a</div>
+      <div class="drink-name">${drink.name}</div>
+      ${desc ? `<div class="drink-desc">${desc}</div>` : ''}
+      <div class="drink-tags">${tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      ${note}
+      ${rerollable ? `<button class="restart-btn" onclick="reroll()">Give me another one</button>` : ''}
+      <button class="restart-btn" onclick="restart()">Start over</button>
+    </div>`;
+}
+
+function reroll() {
+  const pool = filterPool(answers);
+  const winner = pickWinner(pool, answers, lastResult);
+  lastResult = winner ? winner.name : null;
+  document.getElementById('root').innerHTML = renderResult(winner, pool.length);
+}
+
+function restart() {
+  answers = {}; pending = { fresh: [], booze: [] }; history = []; lastResult = null;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
