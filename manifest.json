@@ -1,0 +1,21 @@
+{
+  "name": "Cocktail Quiz",
+  "short_name": "Cocktails",
+  "description": "A decision tree to help you pick the perfect cocktail",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9f8f6",
+  "theme_color": "#7F77DD",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
